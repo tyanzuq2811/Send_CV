@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure CV Receiver</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            background-color: #e6e6fa;
+            font-family: Arial, sans-serif;
+        }
+        .navbar {
+            background-color: #6a5acd;
+            padding: 10px 20px;
+        }
+        .navbar-brand {
+            color: white;
+            font-weight: bold;
+        }
+        .nav-button {
+            background-color: #ffffff;
+            border: none;
+            border-radius: 20px;
+            padding: 5px 15px;
+            margin-left: 10px;
+            cursor: pointer;
+            color: #6a5acd;
+            font-weight: bold;
+        }
+        .nav-button:hover {
+            background-color: #f0f0f5;
+        }
+        .stats-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .stat-box {
+            background-color: #9370db;
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            width: 200px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .stat-box span {
+            font-size: 2em;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .stat-box p {
+            margin: 0;
+            font-size: 1.1em;
+        }
+        .table-container {
+            margin-top: 20px;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        .card-header {
+            background-color: #6a5acd;
+            color: white;
+            padding: 10px;
+        }
+        .chart-container {
+            margin-top: 20px;
+        }
+        .modal-content {
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .modal-header {
+            background-color: #6a5acd;
+            color: white;
+            border-top-left-radius: 15px;
+            border-top-right-radius: 15px;
+        }
+        .modal-footer .btn {
+            border-radius: 20px;
+            padding: 5px 20px;
+        }
+        .modal-footer .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        .modal-footer .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/dashboard">Secure CV Receiver</a>
+            <div>
+                <button class="nav-button" id="theme-toggle">Toggle Theme</button>
+                <button class="nav-button" id="refresh-btn">Refresh</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="stats-container">
+            <div class="stat-box">
+                <span id="total-files">0</span>
+                <p>Total Files</p>
+            </div>
+            <div class="stat-box">
+                <span id="successful-files">0</span>
+                <p>Successful</p>
+            </div>
+            <div class="stat-box">
+                <span id="failed-files">0</span>
+                <p>Failed</p>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5><i class="fas fa-file-alt me-2"></i>Received Files</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <button class="btn btn-danger" id="delete-all-btn"><i class="fas fa-trash"></i> Delete All</button>
+                    </div>
+                    <div id="files-table">
+                        {% if files %}
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>File Name</th>
+                                        <th>Sender IP</th>
+                                        <th>Received At</th>
+                                        <th>Status</th>
+                                        <th>File Size (Bytes)</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="files-tbody">
+                                    {% for file in files %}
+                                        <tr>
+                                            <td>{{ file[0] }}</td>
+                                            <td>{{ file[1] }}</td>
+                                            <td>{{ file[2] }}</td>
+                                            <td>
+                                                <select class="form-select status-select" data-file-name="{{ file[0] }}">
+                                                    <option value="success" {% if file[3] == 'success' %}selected{% endif %}>success</option>
+                                                    <option value="failed" {% if file[3] == 'failed' %}selected{% endif %}>failed</option>
+                                                </select>
+                                            </td>
+                                            <td>{{ file[4] }}</td>
+                                            <td>
+                                                <button class="btn btn-danger btn-sm delete-btn" data-file-name="{{ file[0] }}"><i class="fas fa-trash"></i></button>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <p class="text-muted">No files received yet.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-pie me-2"></i>File Status Chart</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="statusChart" style="max-height: 200px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete the file <span id="modal-file-name"></span>?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-btn">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let statusChart = null;
+
+        function updateChart(files) {
+            const totalFiles = files.length;
+            const successCount = files.filter(f => f.status === 'success').length;
+            const failedCount = files.filter(f => f.status === 'failed').length;
+
+            document.getElementById('total-files').textContent = totalFiles;
+            document.getElementById('successful-files').textContent = successCount;
+            document.getElementById('failed-files').textContent = failedCount;
+
+            if (statusChart) {
+                statusChart.destroy();
+            }
+
+            const chartData = {
+                type: 'pie',
+                data: {
+                    labels: ['Success', 'Failed'],
+                    datasets: [{
+                        data: [successCount, failedCount],
+                        backgroundColor: ['#28a745', '#dc3545'],
+                        borderColor: ['#ffffff', '#ffffff'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: document.body.classList.contains('dark-theme') ? '#f0f0f0' : '#333'
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'File Status Distribution',
+                            color: document.body.classList.contains('dark-theme') ? '#f0f0f0' : '#333'
+                        }
+                    }
+                }
+            };
+            statusChart = new Chart(document.getElementById('statusChart'), chartData);
+        }
+
+        function updateFilesTable() {
+            fetch('/get_files')
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.json();
+                })
+                .then(files => {
+                    const tbody = document.getElementById('files-tbody');
+                    const filesTable = document.getElementById('files-table');
+                    if (files.length === 0) {
+                        filesTable.innerHTML = '<p class="text-muted">No files received yet.</p>';
+                        updateChart([]);
+                        return;
+                    }
+                    let html = `
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>File Name</th>
+                                    <th>Sender IP</th>
+                                    <th>Received At</th>
+                                    <th>Status</th>
+                                    <th>File Size (Bytes)</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="files-tbody">
+                    `;
+                    files.forEach(file => {
+                        html += `
+                            <tr>
+                                <td>${file.file_name}</td>
+                                <td>${file.sender_ip}</td>
+                                <td>${file.received_at}</td>
+                                <td>
+                                    <select class="form-select status-select" data-file-name="${file.file_name}">
+                                        <option value="success" ${file.status === 'success' ? 'selected' : ''}>success</option>
+                                        <option value="failed" ${file.status === 'failed' ? 'selected' : ''}>failed</option>
+                                    </select>
+                                </td>
+                                <td>${file.file_size}</td>
+                                <td>
+                                    <button class="btn btn-danger btn-sm delete-btn" data-file-name="${file.file_name}"><i class="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    html += '</tbody></table>';
+                    filesTable.innerHTML = html;
+                    updateChart(files);
+
+                    // Reattach event listeners
+                    document.querySelectorAll('.status-select').forEach(select => {
+                        select.removeEventListener('change', handleStatusChange);
+                        select.addEventListener('change', handleStatusChange);
+                    });
+
+                    document.querySelectorAll('.delete-btn').forEach(btn => {
+                        btn.removeEventListener('click', handleDelete);
+                        btn.addEventListener('click', handleDelete);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error updating files:', error);
+                    document.getElementById('files-table').innerHTML = '<p class="text-muted">Error loading files.</p>';
+                    updateChart([]);
+                });
+        }
+
+        // Handle status change
+        function handleStatusChange(e) {
+            const fileName = e.target.getAttribute('data-file-name');
+            const newStatus = e.target.value;
+            fetch('/update_status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file_name: fileName, status: newStatus })
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to update status');
+                return response.json();
+            })
+            .then(data => {
+                console.log('Status updated:', data);
+                updateFilesTable();
+            })
+            .catch(error => console.error('Error updating status:', error));
+        }
+
+        // Handle delete action with modal
+        function handleDelete(e) {
+            const fileName = e.target.closest('.delete-btn').getAttribute('data-file-name');
+            const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            document.getElementById('modal-file-name').textContent = fileName;
+
+            document.getElementById('confirm-delete-btn').onclick = () => {
+                fetch('/delete_file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file_name: fileName })
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to delete file');
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Delete response:', data);
+                    if (data.message === 'File deleted successfully') {
+                        modal.hide();
+                        updateFilesTable();
+                    } else {
+                        throw new Error(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting file:', error);
+                    alert('Failed to delete file: ' + error.message);
+                });
+            };
+            modal.show();
+        }
+
+        // Handle delete all
+        document.getElementById('delete-all-btn').addEventListener('click', () => {
+            if (confirm('Are you sure you want to delete all files?')) {
+                fetch('/delete_all_files', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to delete all files');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.message === 'All files deleted successfully') {
+                        updateFilesTable();
+                    } else {
+                        throw new Error(data.message);
+                    }
+                })
+                .catch(error => console.error('Error deleting all files:', error));
+            }
+        });
+
+        // Handle refresh
+        document.getElementById('refresh-btn').addEventListener('click', updateFilesTable);
+
+        // Auto-refresh every 5 seconds
+        setInterval(updateFilesTable, 5000);
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateFilesTable();
+            fetch('/get_files')
+                .then(response => response.json())
+                .then(files => {
+                    localStorage.setItem('lastFiles', JSON.stringify(files));
+                    updateChart(files);
+                })
+                .catch(error => console.error('Error loading initial files:', error));
+        });
+
+        // Handle theme toggle
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+            document.body.classList.toggle('light-theme');
+            document.body.classList.toggle('dark-theme');
+            localStorage.setItem('theme', document.body.classList.contains('dark-theme') ? 'dark' : 'light');
+            document.querySelectorAll('.navbar').forEach(nav => {
+                nav.classList.toggle('navbar-dark', document.body.classList.contains('dark-theme'));
+                nav.classList.toggle('navbar-light', document.body.classList.contains('light-theme'));
+                nav.classList.toggle('bg-dark', document.body.classList.contains('dark-theme'));
+                nav.classList.toggle('bg-light', document.body.classList.contains('light-theme'));
+            });
+            document.querySelectorAll('.card-header').forEach(header => {
+                header.classList.toggle('bg-primary', !document.body.classList.contains('dark-theme'));
+                header.classList.toggle('bg-secondary', document.body.classList.contains('dark-theme'));
+            });
+            updateChart(JSON.parse(localStorage.getItem('lastFiles') || '[]'));
+        });
+
+        // Apply saved theme
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-theme');
+            document.body.classList.remove('light-theme');
+            document.querySelectorAll('.navbar').forEach(nav => {
+                nav.classList.add('navbar-light', 'bg-light');
+                nav.classList.remove('navbar-dark', 'bg-dark');
+            });
+            document.querySelectorAll('.card-header').forEach(header => {
+                header.classList.add('bg-secondary');
+                header.classList.remove('bg-primary');
+            });
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</body>
+</html>
